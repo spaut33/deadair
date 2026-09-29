@@ -44,6 +44,9 @@ export const bundledPluginDirs: string[] = [
     resolveBundledPluginDir('plugins/kokoro'),
     resolveBundledPluginDir('plugins/chatterbox'),
     resolveBundledPluginDir('plugins/rhapsode'),
+    // aitalks: cloud voices that perform the station's cues (see plugins/aitalks-*).
+    resolveBundledPluginDir('plugins/aitalks-elevenlabs'),
+    resolveBundledPluginDir('plugins/aitalks-gemini-tts'),
     resolveBundledPluginDir('plugins/llm'),
     resolveBundledPluginDir('plugins/analyzer'),
     resolveBundledPluginDir('plugins/rss'),
