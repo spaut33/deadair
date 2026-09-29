@@ -599,12 +599,13 @@ describe('breakPrompt', () => {
     describe('what the order knows about a record', () => {
         const known = { ...previous, year: 1973, album: 'Solid Air', durationMs: 401_000 };
 
-        it('hands over the year, the album and the length', () => {
+        it('hands over the year and the album, and not the length of a record', () => {
             const said = user(prompt({ kind: 'talkbreak', previous: known }));
 
             expect(said).toContain('- Year: 1973');
             expect(said).toContain('- Album: Solid Air');
-            expect(said).toContain('- Length: 6 minutes 41 seconds');
+            // aitalks: a model given a record's length builds the break on it.
+            expect(said).not.toContain('- Length:');
         });
 
         it('leaves out what the order does not know rather than showing it blank', () => {
@@ -635,18 +636,10 @@ describe('breakPrompt', () => {
             expect(said).not.toContain('- Album:');
         });
 
-        it('says the length in minutes and seconds rather than in milliseconds', () => {
-            // A model handed `401000` either reads it out or divides it, and one of those is worse.
+        it('never hands over a record length in milliseconds either', () => {
             const said = user(prompt({ kind: 'talkbreak', previous: known }));
 
             expect(said).not.toContain('401000');
-        });
-
-        it('does not say zero seconds for a whole number of minutes', () => {
-            const said = user(prompt({ kind: 'talkbreak', previous: { ...previous, durationMs: 180_000 } }));
-
-            expect(said).toContain('- Length: 3 minutes');
-            expect(said).not.toContain('0 seconds');
         });
 
         it('stops claiming the station knows only the title and the artist', () => {

@@ -1389,7 +1389,9 @@ function describe(track: BreakTrack, withFacts: boolean): string {
     if (withFacts) {
         if (track.year) lines.push(`- Year: ${track.year}`);
         if (track.album?.trim()) lines.push(`- Album: ${spoken(track.album.trim())}`);
-        if (track.durationMs) lines.push(`- Length: ${spokenLength(track.durationMs)}`);
+        // aitalks: a record's length is not shown. Given a length, the model builds the whole break on it
+        // ("six minutes forty-four seconds of..."), which nobody says out loud about a song. A programme keeps
+        // its length, because there it is a fact about what is coming.
     }
     if (withFacts && track.facts && track.facts.length > 0) lines.push('- Notes:', ...track.facts.map(fact => `  - ${fact}`));
     return lines.join('\n');
