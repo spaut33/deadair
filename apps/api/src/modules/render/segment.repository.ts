@@ -1520,6 +1520,18 @@ export class SegmentRepository extends DataRepository {
     }
 
     /**
+     * How long the audio really is, as the analyzer decoded it.
+     *
+     * aitalks: a rendered break carries no length of its own unless the engine reported one, and the
+     * hand-over needs one to decide whether the break fits over a record's outro or intro
+     * (`director/voice.over.ts`). The decoded length is the honest figure, and only ever fills a
+     * gap: a length the render already recorded is left alone.
+     */
+    async recordDuration(id: string, durationMs: number): Promise<void> {
+        await this.db.updateTable('deadair.segments').set({ durationMs }).where('id', '=', id).where('durationMs', 'is', null).execute();
+    }
+
+    /**
      * Hand a render back because the HOST was not ready, not because the segment was wrong.
      *
      * `rendering → written`, which is where {@link claimForRender} starts, so `retryRenders` picks

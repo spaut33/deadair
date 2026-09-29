@@ -376,6 +376,12 @@ export class RenderSegmentJob extends PlainJob<RenderSegmentPayload> {
             // guard below, silently, so 612 segments were measured and none of them was recorded.
             const loudnessLufs = result?.data.integratedLufs;
 
+            // aitalks: the decoded length, for a break that may be spoken over a record. Written
+            // before the loudness guard below, which returns early for near-silence.
+            if (typeof result?.durationMs === 'number' && Number.isFinite(result.durationMs) && result.durationMs > 0) {
+                await this.segments.recordDuration(segmentId, Math.round(result.durationMs));
+            }
+
             // A measurement without a loudness figure is allowed by the contract — the cue points
             // are required and this is not — and near-silence legitimately has none.
             if (typeof loudnessLufs !== 'number' || !Number.isFinite(loudnessLufs)) return;

@@ -20,6 +20,7 @@ import { DEFAULT_RESTART_STUCK_CHAIN, RESTART_STUCK_CHAIN_KEY } from '#modules/p
 import { DEFAULT_AUTO_EXTEND, DEFAULT_RULES, MIX_IN_EVERY_RANGE, ROTATION_KEYS } from '#modules/director/rotation.rules.js';
 import { DEFAULT_MAX_TRACK_SECONDS, DEFAULT_MIN_TRACK_SECONDS, TRACK_LENGTH_KEYS } from '#modules/director/track.length.js';
 import { TEMPLATE_KEYS } from '#modules/director/break.templates.js';
+import { DEFAULT_VOICE_OVER_MODE, VOICE_OVER_KEY } from '#modules/director/voice.over.js';
 import {
     DEFAULT_THREAD_GAP_MINUTES,
     MAX_THREAD_GAP_MINUTES,
@@ -827,6 +828,24 @@ export const SETTING_DESCRIPTORS: readonly SettingDescriptor[] = [
         default: DEFAULT_RULES.breakEveryMinutes,
         dependsOn: ROTATION_KEYS.breaks,
         help: 'Fifteen is around as long as a station can go without saying its own name before it sounds like a playlist. Each sort of break keeps its own spacing, so a news bulletin does not push the next ident back.',
+    },
+    {
+        group: 'breaks',
+        key: VOICE_OVER_KEY,
+        label: 'Speak over the music',
+        type: 'select',
+        default: DEFAULT_VOICE_OVER_MODE,
+        dependsOn: ROTATION_KEYS.breaks,
+        options: [
+            { value: 'both', label: 'Over the end of a record or the start of the next' },
+            { value: 'outro', label: 'Over the end of a record' },
+            { value: 'intro', label: 'Over the start of the next record' },
+            { value: 'off', label: 'Never: always in the gap between records' },
+        ],
+        help:
+            'A talk break that fits is spoken while the music is still playing, ducked underneath, rather than in the silence between two records. ' +
+            'It needs the audio analyzer, because it has to know where a record starts to end and where its vocal comes in; a break that does not fit, or a record ' +
+            'nobody has measured yet, stays in the gap. How far the music drops is set under Stream.',
     },
     {
         group: 'breaks',

@@ -58,6 +58,7 @@ import {
 } from './station.lineup.js';
 import { StationLineupRepository } from './station.lineup.repository.js';
 import { awaitsMeasurement, measurementOf } from './track.measurement.js';
+import { planVoiceOver, VOICE_OVER_KEY, VOICE_OVER_KINDS, voiceOverModeOf } from './voice.over.js';
 import { errorText } from '#modules/shared/error.text.js';
 
 /**
@@ -2803,6 +2804,7 @@ export class DirectorService {
         // batch: see the field's own note.
         let pending = this.pendingVoice;
         this.pendingVoice = undefined;
+        const voiceOverMode = voiceOverModeOf(this.config.get(VOICE_OVER_KEY, ''));
 
         for (const item of items) {
             if (item.kind === 'track') {
@@ -3055,6 +3057,36 @@ export class DirectorService {
                     ...(segment.loudnessLufs === undefined ? {} : { loudnessLufs: segment.loudnessLufs }),
                 };
                 continue;
+            }
+
+            // aitalks: a talk break that fits over the tail of the record before it, or the intro of the
+            // record after it, is spoken over that record instead of in the silence between two. It
+            // needs both measurements and the break's own length, and anything missing keeps it in the
+            // gap, which is always safe. See `voice.over.ts`.
+            if (item.over === undefined && VOICE_OVER_KINDS.has(segment.kind) && voiceOverMode !== 'off') {
+                const last = playable.at(-1);
+                const before = this.lineup?.previousTrackBefore(item.id);
+                const after = this.lineup?.nextTrackAfter(item.id);
+                const rides = last !== undefined && last.voice === undefined && before !== undefined && last.id === before.id;
+                const plan = planVoiceOver({
+                    mode: voiceOverMode,
+                    speechMs: segment.durationMs,
+                    ...(rides ? { previous: last } : {}),
+                    ...(after !== undefined && pending === undefined ? { next: after.track } : {}),
+                });
+                if (plan !== undefined) {
+                    const cue = {
+                        segmentId: segment.id,
+                        atMs: plan.atMs,
+                        itemId: item.id,
+                        ...(segment.loudnessLufs === undefined ? {} : { loudnessLufs: segment.loudnessLufs }),
+                    };
+                    this.logger.info('director: speaking a break over a record instead of in the gap', { segment: item.segmentId, over: plan.over, atMs: plan.atMs });
+                    this.lineup?.markHanded(item.id);
+                    if (plan.over === 'outro' && last !== undefined) last.voice = cue;
+                    else pending = { itemId: item.id, segmentId: segment.id, atMs: plan.atMs, ...(cue.loudnessLufs === undefined ? {} : { loudnessLufs: cue.loudnessLufs }) };
+                    continue;
+                }
             }
 
             const spoken = segmentRundownTrack(segment);
