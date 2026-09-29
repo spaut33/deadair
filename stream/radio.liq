@@ -116,8 +116,8 @@ harbor_port = int_of_string(environment.get("HARBOR_PORT", default="8005"))
 # the gap IS live — only the duck-vs-cut mix choice needs the restart.
 talk_over = environment.get("TALK_OVER_TRACKS", default="true") == "true"
 
-# How far the bed drops under the voice, and how long the ramp takes (director settings
-# duckGainDb / duckFadeMs, materialized into radio.env). Read at startup like talk_over.
+# How far the bed drops under the voice, and how long the ramp takes (the stream.duckGainDb /
+# stream.duckFadeMs settings, materialized into radio.env). Read at startup like talk_over.
 #
 # Through `env_float` (defined at the top of this file) because the materializer writes every key
 # whether or not it is set, so an unset one arrives here as the empty string rather than absent.

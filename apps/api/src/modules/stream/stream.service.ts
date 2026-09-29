@@ -38,30 +38,27 @@ import type {
 } from './types/stream.types.js';
 
 /**
- * How a break sounds: whether the DJ talks over the music or between tracks, how
- * far the bed drops under it, how long that ramp takes, and the trim on the
- * voice itself.
+ * How a break sounds: whether the DJ talks over the music or between tracks, and
+ * the trim on the voice itself.
  *
- * Constants rather than settings, still: these are the values an operator tunes
- * by ear, and the seam that would hold them (`STREAM_KEYS` in
- * `stream.settings.ts`) is the one every other stream value already goes
- * through. They stay here because `radio.liq` reads all four at STARTUP, so
- * making them settings without also solving the restart trigger would give the
- * console a knob that silently does nothing until the container bounces. See
- * [mixer-settings-in-db](https://github.com/robert-dean/deadair/discussions/20).
+ * Constants rather than settings, still. How far the bed drops under the DJ and
+ * how long that ramp takes sat here too and are settings now
+ * (`stream.duckGainDb`, `stream.duckFadeMs` in `stream.settings.ts`): `radio.liq`
+ * reads all four at STARTUP, and the restart trigger
+ * [mixer-settings-in-db](https://github.com/robert-dean/deadair/discussions/20)
+ * was waiting for exists — the config watch restarts Liquidsoap whenever a save
+ * changes the rendered `radio.env`.
  *
  * They match `stream/radio.default.env` so the rendered file agrees with the
  * committed fallback.
  */
 const TALK_OVER_TRACKS = true;
-const DUCK_GAIN_DB = -12;
-const DUCK_FADE_MS = 300;
 
 /**
  * The operator's trim on the DJ voice, on top of the gain the app decides for
  * each segment.
  *
- * Zero, and it is the only one of these four that is zero because it has nothing
+ * Zero, and it is the only one of the four mixer values that is zero because it has nothing
  * to correct rather than because nobody has tuned it. The level itself is
  * `liq_amplify`, stamped per segment by `playout/annotate.ts` from that
  * segment's level against `playout.targetLufs` and applied in the mic chain —
@@ -324,8 +321,6 @@ export class StreamService {
             playoutStarveUrl: playoutStarveUrl(base),
             playoutBridgeSecret: settings.playoutBridgeSecret ?? '',
             talkOverTracks: TALK_OVER_TRACKS,
-            duckGainDb: DUCK_GAIN_DB,
-            duckFadeMs: DUCK_FADE_MS,
             voiceGainDb: VOICE_GAIN_DB,
             controlTtlS: CONTROL_TTL_S,
             playoutPrefetch: PLAYOUT_LEAD,

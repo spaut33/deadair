@@ -180,10 +180,6 @@ export interface StreamPlayoutConfig {
      * radio.liq at startup, so a change needs a Liquidsoap restart.
      */
     talkOverTracks: boolean;
-    /** How far the bed drops under the voice, in dB (negative). */
-    duckGainDb: number;
-    /** How long the duck ramp takes, in ms. */
-    duckFadeMs: number;
     /**
      * Trim on the DJ voice, in dB, applied after the mic chain in `radio.liq`.
      *
@@ -504,10 +500,12 @@ export function writeStreamConfig({
             // unfetched, which is the one state a skip cannot land in.
             `PLAYOUT_PREFETCH=${shell(String(playout.playoutPrefetch))}`,
             // The duck. Read at Liquidsoap startup, so changing these re-renders the file
-            // and takes effect on the next restart.
+            // and takes effect on the next restart. Depth and ramp are the operator's
+            // settings (`stream.duckGainDb`, `stream.duckFadeMs`); left where they were in the
+            // file, because the key ORDER is what the config stamp hashes (see LOG_LEVEL below).
             `TALK_OVER_TRACKS=${shell(playout.talkOverTracks ? 'true' : 'false')}`,
-            `DUCK_GAIN_DB=${shell(String(playout.duckGainDb))}`,
-            `DUCK_FADE_MS=${shell(String(playout.duckFadeMs))}`,
+            `DUCK_GAIN_DB=${shell(String(settings.duckGainDb))}`,
+            `DUCK_FADE_MS=${shell(String(settings.duckFadeMs))}`,
             // The voice trim, read at startup with the duck. Written unconditionally, even at
             // zero, because `radio.liq` tolerates an unset or empty value and a key that appears
             // only when it is non-default is a key an operator cannot find in the rendered file.

@@ -10,6 +10,8 @@ import { EncryptionProvider } from '@maroonedsoftware/encryption';
 import { describe, expect, it } from 'vitest';
 
 import {
+    DUCK_FADE_MS_RANGE,
+    DUCK_GAIN_DB_RANGE,
     ensureStreamSecrets,
     MAX_LISTENERS_RANGE,
     resolveMaxListeners,
@@ -167,6 +169,41 @@ describe('resolveStreamSettings', () => {
         const { config } = settingsConfig({ [STREAM_KEYS.logLevel]: '3.7' });
 
         expect(resolveStreamSettings(config, encryption).logLevel).toBe(4);
+    });
+
+    // The duck, on the same rules as the log level above and with strings for the same reason.
+    const duck = (values: Record<string, string> = {}) => {
+        const { duckGainDb, duckFadeMs } = resolveStreamSettings(settingsConfig(values).config, encryption);
+        return { duckGainDb, duckFadeMs };
+    };
+
+    it('defaults the duck to the -12 dB over 300 ms it was a constant at', () => {
+        expect(duck()).toEqual({ duckGainDb: -12, duckFadeMs: 300 });
+    });
+
+    it('reads the duck the operator stored', () => {
+        expect(duck({ [STREAM_KEYS.duckGainDb]: '-18', [STREAM_KEYS.duckFadeMs]: '600' })).toEqual({ duckGainDb: -18, duckFadeMs: 600 });
+    });
+
+    it('takes the default for a duck stored empty or as something that is not a number', () => {
+        // Empty is the case `numberOr` gets wrong: `Number('')` is 0, which the clamp would turn into
+        // -3 dB — music barely down under the voice because somebody blanked a box.
+        expect(duck({ [STREAM_KEYS.duckGainDb]: '', [STREAM_KEYS.duckFadeMs]: '' })).toEqual({ duckGainDb: -12, duckFadeMs: 300 });
+        expect(duck({ [STREAM_KEYS.duckGainDb]: 'loud', [STREAM_KEYS.duckFadeMs]: 'slow' })).toEqual({ duckGainDb: -12, duckFadeMs: 300 });
+    });
+
+    it('keeps the ends of the duck ranges, and clamps a stored figure past them rather than refusing the read', () => {
+        expect(duck({ [STREAM_KEYS.duckGainDb]: '-30', [STREAM_KEYS.duckFadeMs]: '50' })).toEqual({ duckGainDb: -30, duckFadeMs: 50 });
+        expect(duck({ [STREAM_KEYS.duckGainDb]: '-3', [STREAM_KEYS.duckFadeMs]: '2000' })).toEqual({ duckGainDb: -3, duckFadeMs: 2000 });
+
+        expect(duck({ [STREAM_KEYS.duckGainDb]: '-60', [STREAM_KEYS.duckFadeMs]: '10' })).toEqual({
+            duckGainDb: DUCK_GAIN_DB_RANGE.min,
+            duckFadeMs: DUCK_FADE_MS_RANGE.min,
+        });
+        expect(duck({ [STREAM_KEYS.duckGainDb]: '6', [STREAM_KEYS.duckFadeMs]: '9000' })).toEqual({
+            duckGainDb: DUCK_GAIN_DB_RANGE.max,
+            duckFadeMs: DUCK_FADE_MS_RANGE.max,
+        });
     });
 
     // The public URL is derived when empty rather than defaulted, the way the advertised hostname

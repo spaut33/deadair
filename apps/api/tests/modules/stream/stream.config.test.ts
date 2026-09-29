@@ -6,14 +6,17 @@
 // far from its cause — a password broken by quoting, a mount name mangled by XML
 // escaping, a skipped render leaving the station on last week's config.
 
+import { randomBytes } from 'node:crypto';
 import { mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EncryptionProvider } from '@maroonedsoftware/encryption';
 import { describe, expect, it } from 'vitest';
 
 import { parseFileMode, writeStreamConfig, type StreamPlayoutConfig } from '../../../src/modules/stream/stream.config.js';
-import type { StreamSettings } from '../../../src/modules/stream/stream.settings.js';
+import { resolveStreamSettings, STREAM_KEYS, type StreamSettings } from '../../../src/modules/stream/stream.settings.js';
+import { settingsConfig } from '../../utils/settings.config.js';
 
 /**
  * The repo's own `stream/` directory, found from this file rather than from the process.
@@ -65,6 +68,8 @@ const settings = (overrides: Partial<StreamSettings> = {}): StreamSettings => ({
     icecastHost: 'icecast',
     icecastPort: '8000',
     logLevel: 3,
+    duckGainDb: -12,
+    duckFadeMs: 300,
     sourcePassword: 'source-pw',
     adminPassword: 'admin-pw',
     harborPassword: 'harbor-pw',
@@ -78,8 +83,6 @@ const playout = (overrides: Partial<StreamPlayoutConfig> = {}): StreamPlayoutCon
     playoutStarveUrl: 'http://host.docker.internal:3333/api/playout/bridge/starve',
     playoutBridgeSecret: 'bridge-secret',
     talkOverTracks: true,
-    duckGainDb: -12,
-    duckFadeMs: 300,
     voiceGainDb: 0,
     controlTtlS: 6,
     playoutPrefetch: 3,
@@ -201,6 +204,20 @@ describe('writeStreamConfig', () => {
         expect(env.get('DUCK_GAIN_DB')).toBe('-12');
         expect(env.get('DUCK_FADE_MS')).toBe('300');
         expect(env.get('VOICE_GAIN_DB')).toBe('0');
+    });
+
+    it('writes the duck the operator set, from the stored text through the resolver', () => {
+        // The whole path a save takes short of the restart: the row as text, the resolver's number,
+        // the line radio.liq reads. The two lines are the only change in the file, so the config
+        // watch restarts the audio chain onto them and nothing else.
+        const stored = settingsConfig({ [STREAM_KEYS.duckGainDb]: '-18', [STREAM_KEYS.duckFadeMs]: '750' }).config;
+        const { duckGainDb, duckFadeMs } = resolveStreamSettings(stored, new EncryptionProvider(randomBytes(32)));
+        const { assetsDir, configDir } = dirs();
+        writeStreamConfig({ settings: settings({ duckGainDb, duckFadeMs }), playout: playout(), assetsDir, configDir });
+
+        const raw = readFileSync(join(configDir, 'radio.env'), 'utf8');
+        expect(raw).toContain("DUCK_GAIN_DB='-18'\n");
+        expect(raw).toContain("DUCK_FADE_MS='750'\n");
     });
 
     it('writes the audio chain log level, which radio.liq reads as an integer', () => {

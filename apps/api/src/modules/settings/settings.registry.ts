@@ -138,6 +138,8 @@ import {
     STREAM_DEFAULTS,
     STREAM_KEYS,
     MAX_LISTENERS_RANGE,
+    DUCK_FADE_MS_RANGE,
+    DUCK_GAIN_DB_RANGE,
 } from '#modules/stream/stream.settings.js';
 // Deliberately NOT in `STREAM_KEYS`: that set is what `isStreamSettingKey` marks as needing the
 // stream config re-rendered and the audio chain restarted, and this one is read per request by a
@@ -413,6 +415,33 @@ export const SETTING_DESCRIPTORS: readonly SettingDescriptor[] = [
             'How many people may listen to each format at once: the MP3 stream, each extra format you have switched on, and HLS, each counted on its own. ' +
             'Somebody already listening is never cut off; only a new listener is turned away. Zero is no limit. ' +
             'Saving this restarts the stream server, which drops everyone listening for a few seconds.',
+    },
+    // The duck, on the Stream card rather than Playout's: like the log level it is in the file the
+    // audio chain reads at startup, so saving it costs a restart, which is what the Stream card's
+    // blurb warns of.
+    {
+        group: 'stream',
+        key: STREAM_KEYS.duckGainDb,
+        label: 'Music under the DJ (dB)',
+        type: 'number',
+        default: STREAM_DEFAULTS.duckGainDb,
+        min: DUCK_GAIN_DB_RANGE.min,
+        max: DUCK_GAIN_DB_RANGE.max,
+        help:
+            'How far the music is turned down while the presenter talks over it. Closer to zero keeps the music louder under the voice; further from it pulls the music further back. ' +
+            'Saving this restarts the audio chain, so the stream drops for a few seconds.',
+    },
+    {
+        group: 'stream',
+        key: STREAM_KEYS.duckFadeMs,
+        label: 'Music fade under the DJ (ms)',
+        type: 'number',
+        default: STREAM_DEFAULTS.duckFadeMs,
+        min: DUCK_FADE_MS_RANGE.min,
+        max: DUCK_FADE_MS_RANGE.max,
+        help:
+            'How long the music takes to go down before the presenter speaks, and to come back up afterwards. ' +
+            'Saving this restarts the audio chain, so the stream drops for a few seconds.',
     },
     // How Icecast describes the station to players and directories. These were on the Station card,
     // beside the name, which made them read as the station's identity; nothing but Icecast and the

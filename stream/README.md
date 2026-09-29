@@ -322,8 +322,8 @@ never meets the strip above, so that one is load-bearing rather than belt-and-br
 The **duck** is ours, not `smooth_add`'s: `radio.liq` ramps a gain ref on the bed while the
 harbor source is ready, and `add`s the voice on top. `smooth_add` fades the bed down but never
 back up ([#3714](https://github.com/savonet/liquidsoap/issues/3714)). Depth and ramp are
-`DUCK_GAIN_DB` / `DUCK_FADE_MS` in `radio.env`, read at startup, so tuning them by ear needs a
-Liquidsoap restart.
+`DUCK_GAIN_DB` / `DUCK_FADE_MS` in `radio.env`, rendered from the `stream.duckGainDb` /
+`stream.duckFadeMs` settings and read at startup, so saving either restarts Liquidsoap.
 
 The **voice has a mic chain** of its own, between the voice queue and both mixes: a 40 ms `fade.in`,
 a compressor, then a `VOICE_GAIN_DB` trim. It exists because the duck is a fixed number of dB, so it

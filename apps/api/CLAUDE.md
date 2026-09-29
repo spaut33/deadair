@@ -61,8 +61,10 @@ answer differently on purpose**: the resolver CLAMPS, because it is reading a ro
 setting that refuses to load stops the walk behind it, while `serializeSetting` REFUSES, because that is
 somebody typing one and a clamp there stores a figure they did not ask for and shows it back as though they
 had. The console clamps too, where the number visibly changes in front of them. Undeclared bounds were how
-`analysis.concurrency` accepted 400 and ran at 32. Still constants, deliberately: the four mixer knobs,
-because the real work there is a Liquidsoap restart ([mixer-settings-in-db](https://github.com/robert-dean/deadair/discussions/20)).
+`analysis.concurrency` accepted 400 and ran at 32. Two of the four mixer knobs are settings now,
+`stream.duckGainDb` and `stream.duckFadeMs`, because the Liquidsoap restart they waited for exists: the config
+watch restarts the audio chain whenever a save changes `radio.env`. Talk-over and the voice trim are still
+constants in `stream.service.ts` ([mixer-settings-in-db](https://github.com/robert-dean/deadair/discussions/20)).
 
 **Some lengths are RANGES, and the resolvers behind them are the only ones here allowed to be random.**
 `render.productionMinutesMin`/`Max`, `render.dialogueMinutesMin`/`Max` and `rotation.newsStoriesMin`/`Max`,

@@ -112,6 +112,15 @@ export const STREAM_KEYS = {
      * out of `/data/streamlogs` with the segments rather than sitting in one file for ever.
      */
     logLevel: 'stream.logLevel',
+    /**
+     * How far the music drops under the DJ in talk-over mode, in dB, and how long that ramp takes, in ms.
+     *
+     * Constants in `stream.service.ts` until the config watch could restart Liquidsoap on a re-render:
+     * `radio.liq` reads both once, at startup, so a knob with no restart behind it did nothing.
+     * **Saving either restarts the audio chain**, on `logLevel`'s rule, and the help text says so.
+     */
+    duckGainDb: 'stream.duckGainDb',
+    duckFadeMs: 'stream.duckFadeMs',
     // Secrets below. Stored encrypted, never returned in the clear to a response.
     sourcePassword: 'stream.sourcePassword',
     adminPassword: 'stream.adminPassword',
@@ -183,6 +192,10 @@ export interface StreamSettings {
     icecastPort: string;
     /** Liquidsoap's own log level, 1-5. Always an integer, because `radio.liq` reads it as one. */
     logLevel: number;
+    /** How far the music drops under the DJ, in dB (negative). See {@link STREAM_KEYS.duckGainDb}. */
+    duckGainDb: number;
+    /** How long the duck ramp takes, in ms. */
+    duckFadeMs: number;
     /** Decrypted Icecast source password, `undefined` when unset. */
     sourcePassword?: string;
     /** Decrypted Icecast admin password, `undefined` when unset. */
@@ -244,6 +257,10 @@ export const STREAM_DEFAULTS = {
     // at. 4 is a diagnostic position rather than a place to leave a station: it logs every header
     // of every control call, and the app polls that endpoint continuously.
     logLevel: 3,
+    // The values the constants had, and `radio.default.env` still has, so a station that never set
+    // either renders the same file and an upgrade restarts nothing.
+    duckGainDb: -12,
+    duckFadeMs: 300,
 } as const;
 
 /**
@@ -305,6 +322,9 @@ export function resolveStreamSettings(config: AppConfig, encryption: EncryptionP
         // "critical only" — a station that stopped logging because a setting was blanked. Clamp
         // rather than refuse on the resolver rule: this is reading a row that is already stored.
         logLevel: clamp(numberFrom(values.get(STREAM_KEYS.logLevel), STREAM_DEFAULTS.logLevel), 1, 5),
+        // `numberFrom` for `logLevel`'s reason: an empty string must be the default, not zero.
+        duckGainDb: clamp(numberFrom(values.get(STREAM_KEYS.duckGainDb), STREAM_DEFAULTS.duckGainDb), DUCK_GAIN_DB_RANGE.min, DUCK_GAIN_DB_RANGE.max),
+        duckFadeMs: clamp(numberFrom(values.get(STREAM_KEYS.duckFadeMs), STREAM_DEFAULTS.duckFadeMs), DUCK_FADE_MS_RANGE.min, DUCK_FADE_MS_RANGE.max),
         sourcePassword: decrypt(values.get(STREAM_KEYS.sourcePassword)),
         adminPassword: decrypt(values.get(STREAM_KEYS.adminPassword)),
         harborPassword: decrypt(values.get(STREAM_KEYS.harborPassword)),
@@ -533,6 +553,10 @@ export function resolveMountSettings(config: AppConfig): MountSettings {
 
 /** The range `stream.maxListeners` takes, shared with the registry for the reason every range there is. */
 export const MAX_LISTENERS_RANGE = { min: 0, max: 10_000 } as const;
+
+/** The ranges the duck's depth and ramp take, shared with the registry as `MAX_LISTENERS_RANGE` is. */
+export const DUCK_GAIN_DB_RANGE = { min: -30, max: -3 } as const;
+export const DUCK_FADE_MS_RANGE = { min: 50, max: 2000 } as const;
 
 /**
  * `stream.maxListeners` as a number, `0` meaning no cap.

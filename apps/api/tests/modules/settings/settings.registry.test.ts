@@ -274,6 +274,26 @@ describe('the settings registry', () => {
         expect(resolveAnalysisConcurrency(descriptor.min! - 1)).toBe(descriptor.min);
     });
 
+    it('declares the duck over the same defaults and range its resolver uses', () => {
+        // Asked of the resolver, as above: a console taking -40 against a resolver that clamps to -30
+        // is an operator hearing a duck they did not set.
+        for (const [key, field] of [
+            [STREAM_KEYS.duckGainDb, 'duckGainDb'],
+            [STREAM_KEYS.duckFadeMs, 'duckFadeMs'],
+        ] as const) {
+            const resolved = (value?: number) =>
+                resolveStreamSettings(settingsConfig(value === undefined ? {} : { [key]: String(value) }).config, encryption)[field];
+            const descriptor = findDescriptor(key)!;
+
+            expect(descriptor.group, key).toBe('stream');
+            expect(resolved(), key).toBe(descriptor.default);
+            expect(resolved(descriptor.min!), key).toBe(descriptor.min);
+            expect(resolved(descriptor.max!), key).toBe(descriptor.max);
+            expect(resolved(descriptor.max! + 1), key).toBe(descriptor.max);
+            expect(resolved(descriptor.min! - 1), key).toBe(descriptor.min);
+        }
+    });
+
     it('declares the sweep guard over the same range and default its resolver uses', () => {
         // The same disagreement again, and here it has teeth in one direction
         // specifically: a console that accepts 200 against a resolver that clamps
@@ -451,10 +471,10 @@ describe('the settings registry', () => {
     });
 
     it('does not know about a key nobody declared', () => {
-        // Undeclared rows are ordinary — a setting arrives before its console does — and the point
-        // is that this answers `undefined` rather than inventing a descriptor for one. The four
-        // mixer knobs are the live example: constants in `stream.service.ts` today, and deferred
-        // in [mixer-settings-in-db](https://github.com/robert-dean/deadair/discussions/20) until something can restart Liquidsoap.
-        expect(findDescriptor('stream.duckGainDb')).toBeUndefined();
+        // Undeclared rows are ordinary — a setting arrives before its console does, or outlives it —
+        // and the point is that this answers `undefined` rather than inventing a descriptor for one.
+        // `stream.mount` is the live example: a row from before the mount paths were fixed, which
+        // `MOUNT_PATHS` in `stream.settings.ts` says is ignored rather than deleted.
+        expect(findDescriptor('stream.mount')).toBeUndefined();
     });
 });
