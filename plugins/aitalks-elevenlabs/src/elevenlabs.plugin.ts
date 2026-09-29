@@ -50,8 +50,9 @@ export class ElevenLabsPlugin extends Plugin implements SpeechPluginInstance {
         this.model = configString(config.model) ?? DEFAULT_MODEL;
         this.defaultVoiceId = configString(config.defaultVoiceId);
         this.voices = voiceMapOf(config[VOICES_FIELD]);
-        this.apiKey = await this.host.secrets.get('apiKey');
-        this.host.logger.info('elevenlabs ready', { model: this.model, voices: Object.keys(this.voices).length, configured: Boolean(this.apiKey) });
+        // A pasted key often carries a trailing newline, which turns into a 401 that looks like a bad key.
+        this.apiKey = (await this.host.secrets.get('apiKey'))?.trim();
+        this.host.logger.info('elevenlabs ready', { model: this.model, voices: Object.keys(this.voices).length, configured: Boolean(this.apiKey), keyLength: this.apiKey?.length ?? 0 });
     }
 
     async testConnection(): Promise<PluginConnectionResult> {
@@ -62,7 +63,15 @@ export class ElevenLabsPlugin extends Plugin implements SpeechPluginInstance {
         } catch (error) {
             return { ok: false, message: `Could not reach ElevenLabs: ${errorText(error)}` };
         }
-        if (!response.ok) return { ok: false, message: `ElevenLabs answered HTTP ${response.status}.` };
+        if (!response.ok) {
+            const reason = await reasonOf(response);
+            // A key scoped to text-to-speech alone is a valid key: it just may not list models. The
+            // speak call is what proves it, and refusing to enable a working key over a probe is worse.
+            if (response.status === 401 && reason.includes('missing_permissions')) {
+                return { ok: true, message: `Key accepted, but it cannot list models (${reason.slice(2)}). Speaking does not need that.` };
+            }
+            return { ok: false, message: `ElevenLabs answered HTTP ${response.status}${reason}` };
+        }
         const models = (await tryJsonBody<Array<{ model_id?: string }>>(response)) ?? [];
         const known = models.some(m => m.model_id === this.model);
         return { ok: true, message: known ? `Connected. Model ${this.model} is available.` : `Connected, but ${this.model} is not in the model list; check the model field.` };
@@ -115,8 +124,8 @@ export class ElevenLabsPlugin extends Plugin implements SpeechPluginInstance {
             timeoutMs: SPEAK_TIMEOUT_MS,
         });
         if (!response.ok || response.body === null) {
-            await response.body?.cancel().catch(() => {});
-            throw new PluginError(`elevenlabs answered HTTP ${response.status} for voice "${voiceId}"`)
+            const reason = await reasonOf(response);
+            throw new PluginError(`elevenlabs answered HTTP ${response.status} for voice "${voiceId}"${reason}`)
                 .withCode(response.status === 401 || response.status === 403 ? 'auth' : 'upstream')
                 .withUpstreamStatus(response.status);
         }
@@ -134,3 +143,11 @@ export class ElevenLabsPlugin extends Plugin implements SpeechPluginInstance {
 
 /** Tags are a v3/v4 feature; the older models read the words in the brackets out loud. */
 export const performsTags = (model: string): boolean => /^eleven_v[34]/.test(model);
+
+/** ElevenLabs says why in the body (`detail.status`, `detail.message`): a bad key and a key without the permission are different fixes. */
+async function reasonOf(response: Response): Promise<string> {
+    const body = await tryJsonBody<{ detail?: { status?: string; message?: string } | string }>(response);
+    const detail = body?.detail;
+    if (detail === undefined) return '.';
+    return typeof detail === 'string' ? `: ${detail}` : `: ${[detail.status, detail.message].filter(Boolean).join(' — ')}`;
+}

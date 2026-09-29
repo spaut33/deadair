@@ -59,6 +59,24 @@ describe('speak', () => {
     });
 });
 
+describe('testConnection', () => {
+    it('accepts a key that is only missing the permission to list models', async () => {
+        const { host, plugin } = await started();
+        host.queueResponse({ status: 401, body: JSON.stringify({ detail: { status: 'missing_permissions', message: 'missing the permission models_read' } }) });
+        const result = await plugin.testConnection();
+        expect(result.ok).toBe(true);
+        expect(result.message).toMatch(/cannot list models/);
+    });
+
+    it('still fails a key ElevenLabs does not know', async () => {
+        const { host, plugin } = await started();
+        host.queueResponse({ status: 401, body: JSON.stringify({ detail: { status: 'invalid_api_key', message: 'Invalid API key' } }) });
+        const result = await plugin.testConnection();
+        expect(result.ok).toBe(false);
+        expect(result.message).toMatch(/invalid_api_key/);
+    });
+});
+
 describe('cues offered', () => {
     it('all eight on v4, none on multilingual v2', async () => {
         expect((await (await started()).plugin.listCues()).length).toBe(8);
